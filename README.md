@@ -2,152 +2,162 @@
 
 Prompter sincronizado a audio para operadores de marioneta. Un solo archivo
 HTML/CSS/JS (sin build, sin dependencias de npm/pip) más una carpeta `/fonts`
-con las tipografías embebidas localmente, y dos scripts Python opcionales:
-`transcribe_server.py` (audio → texto) y `sync_server.py` (guion + audio →
-marcas de tiempo automáticas).
+con las tipografías embebidas localmente. Funciona sin conexión a internet.
 
-## Uso normal: doble clic
+## Inicio rápido
 
-En la mayoría de los casos basta con abrir `apuntador.html` directo con
-doble clic (se abre como `file://...`). Con Chrome o Edge funciona completo:
-carga de guion, carga de audio, marcado de sincronización, modo monitor,
-pantalla completa y guardado/carga de guiones (localStorage) — todo sin
-conexión a internet.
+1. Descarga o cloná esta carpeta completa (necesitás `apuntador.html` junto
+   con la carpeta `/fonts`, no solo el HTML suelto).
+2. Abrí `apuntador.html` con doble clic. Se abre en tu navegador y ya podés
+   usarlo.
+   - Si usás **Firefox**, o si tu Chrome/Edge da errores raros al guardar el
+     guion, en vez de doble clic corré el launcher de tu sistema operativo:
+     - Mac/Linux: doble clic en `start.sh` (o `./start.sh` en una terminal).
+     - Windows: doble clic en `start.bat`.
+     - Esto levanta un servidor local y te abre el navegador solo. Ver
+       [por qué hace falta esto a veces](#cuándo-hace-falta-un-servidor-local).
+
+Con eso ya podés escribir tu guion, cargar el audio, sincronizar y usar el
+modo monitor — todo lo demás en este README es opcional (transcripción y
+sincronización automáticas con IA).
+
+## Cómo usar el prompter
+
+La app tiene tres pestañas que se van habilitando en orden: **Editor** →
+**Sincronizar** → **Monitor**.
+
+### 1. Editor
+
+- Pegá el guion en el cuadro de texto (una línea = una frase/golpe de diálogo)
+  y presioná **Aplicar guion**.
+- Cargá el archivo de audio del episodio en "Audio del episodio".
+- *(Opcional)* Si no tenés el guion escrito, podés generar un borrador con
+  **Transcribir con IA (servidor local)** a partir del audio — ver
+  [Transcripción automática](#transcripción-automática-opcional). Siempre
+  revisá el texto antes de aplicarlo.
+- En "Guardar / cargar" podés **Guardar** el proyecto (guion + estado) en este
+  navegador, **Cargar** uno guardado antes, o **Exportar/Importar .json** para
+  pasarlo a otra máquina. **Nuevo** borra todo y empieza de cero.
+- Cuando el guion está aplicado y el audio cargado, presioná
+  **Iniciar sincronización →**.
+
+### 2. Sincronizar
+
+Acá le decís a la app en qué segundo del audio empieza cada línea:
+
+- **▶ Reproducir** el audio y presioná **MARCAR** (o la tecla `Enter`) justo
+  cuando empieza cada línea, en orden. El contador "X / Y líneas marcadas" te
+  muestra el avance.
+- **Deshacer** retrocede una marca a la vez si te equivocaste.
+- *(Opcional)* **⚡ Auto-sincronizar (IA local)** calcula las marcas de tiempo
+  automáticamente en vez de marcarlas a mano — ver
+  [Sincronización automática](#sincronización-automática-opcional). Después
+  podés seguir corrigiendo líneas puntuales a mano igual que siempre.
+
+Cuando todas las líneas quedan marcadas, se habilita **Monitor**.
+
+### 3. Monitor
+
+Esta es la vista para operar en vivo:
+
+- **▶** reproduce el audio en sincronía con el guion; el texto avanza solo
+  línea por línea siguiendo las marcas de tiempo.
+- **⏮ Reiniciar** vuelve al principio, **⏪ 5s** retrocede 5 segundos.
+- **◀ línea** / **línea ▶** saltan manualmente de línea (útil para ensayar o
+  corregir en vivo); **Volver a auto** retoma el avance automático.
+- **⛶ Pantalla completa** para leer cómodo durante la grabación.
+- **🗗 Ventana emergente** abre el monitor en una ventana aparte (por ejemplo
+  para mandarla a una segunda pantalla mientras controlás todo desde la
+  principal).
 
 ## Cuándo hace falta un servidor local
 
-No es necesario en el caso normal, pero hay un escenario conocido donde
-`file://` da problemas:
+Con doble clic en `apuntador.html` (abre como `file://...`) funciona completo
+en la mayoría de los casos. Hay dos escenarios conocidos donde conviene usar
+`start.sh`/`start.bat` en cambio:
 
-- **Firefox bloquea `localStorage` en `file://` por defecto.** Firefox trata
-  cada archivo abierto con `file://` como un origen único/opaco
-  (`privacy.file_unique_origin`), y los orígenes opacos no pueden usar
-  Web Storage. El resto del prompter (guion, audio, sincronización, monitor,
-  pantalla completa) sigue funcionando igual, pero "Guardar" y "Cargar" guion
-  fallarán silenciosamente (el código ya usa try/catch para no romper la app).
-  Si vas a operar con Firefox, levanta un servidor local.
-- Algunas políticas corporativas de Chrome/Edge también restringen el acceso
-  a `file://`. Si ves la consola marcar errores al cargar las fuentes o al
-  guardar el guion, usa un servidor local como alternativa.
+- **Firefox bloquea `localStorage` en `file://` por defecto**, así que
+  "Guardar" y "Cargar" guion fallan en silencio (el resto de la app sigue
+  funcionando igual).
+- Algunas políticas corporativas de Chrome/Edge también restringen `file://`.
+  Si la consola marca errores al cargar fuentes o guardar el guion, es esto.
 
-Con Chrome/Edge en una laptop normal (el caso típico el día de grabación) no
-necesitas nada de esto.
-
-### Opción A — Python (recomendada, ya viene instalado en la mayoría de sistemas)
+`start.sh`/`start.bat` levantan un servidor con Python y abren el navegador
+solos — ver el mensaje en pantalla del propio script para el detalle de qué
+está haciendo en cada paso. Si preferís hacerlo a mano:
 
 ```bash
 cd ruta/a/prompter-crea
-python3 -m http.server 8000
+python3 -m http.server 8000        # Windows: puede ser "python" en vez de "python3"
 ```
 
-Abre `http://localhost:8000/apuntador.html`.
+Abrí `http://localhost:8000/apuntador.html`.
 
-### Opción B — Node (si no tienes Python pero sí Node.js)
+Alternativa con Node (si no tenés Python pero sí Node.js):
 
 ```bash
 cd ruta/a/prompter-crea
 npx serve .
 ```
 
-Abre la URL que imprima en la terminal (por defecto `http://localhost:3000`).
-
-`npx serve` descarga el paquete `serve` la primera vez que lo usas (requiere
-internet esa única vez, o tenerlo ya en caché de npx). No se agrega como
-dependencia del proyecto ni se necesita `npm install`.
-
 ## Transcripción automática (opcional)
 
-En el editor, junto al audio, hay un botón "Transcribir con IA (servidor
-local)". Es **opcional** — si no lo usas, el guion se sigue escribiendo a
-mano como siempre. Cuando lo usas, convierte el audio a texto con
-[Whisper](https://github.com/openai/whisper) corriendo 100% en el CPU de tu
-máquina (vía [faster-whisper](https://github.com/SYSTRAN/faster-whisper)),
-sin mandar el audio a ningún servidor externo.
+Convierte el audio a texto con [Whisper](https://github.com/openai/whisper)
+(vía [faster-whisper](https://github.com/SYSTRAN/faster-whisper)) corriendo
+100% local en tu CPU, sin mandar el audio a ningún servidor externo. Es
+opcional: si no la usás, escribís el guion a mano como siempre.
 
-Para que funcione, `transcribe_server.py` (incluido en esta carpeta) tiene
-que estar corriendo *antes* de darle al botón:
+**Instalación (una sola vez, requiere internet):**
 
-```bash
-# una sola vez
-pip install faster-whisper
+- Mac/Linux: `./install_ai.sh`
+- Windows: doble clic en `install_ai.bat`
 
-# cada vez que quieras transcribir
-python3 transcribe_server.py
-```
+**Para usarla, antes de darle al botón en la app tenés que levantar los
+servidores:**
 
-Deja esa terminal abierta — el script levanta un servidor en
-`http://127.0.0.1:8765` y `apuntador.html` le manda el audio directo desde el
-navegador (funciona igual si abriste el HTML por doble clic o con un
-servidor local). Si el botón no encuentra el servidor corriendo, te lo dice
-en pantalla en vez de fallar en silencio.
+- Mac/Linux: `./start_ai.sh`
+- Windows: doble clic en `start_ai.bat`
 
-**Sobre el hardware:** esto se probó en una laptop sin GPU dedicada
-(Intel i5 de 4 núcleos/8 hilos, gráficos integrados) y funciona, pero sin
-GPU solo son prácticos los modelos chicos de Whisper. Por defecto el script
-usa el modelo `base` (buen balance velocidad/precisión en CPU). Si tu
-máquina es más lenta o el audio es largo, usa `tiny` (más rápido, menos
-preciso); si tienes una máquina más potente o GPU, puedes subir a `small` o
-`medium` para mejor precisión:
+Esto deja corriendo `transcribe_server.py` en `http://127.0.0.1:8765`; el
+script te va avisando en pantalla cuando el modelo terminó de cargar y el
+servidor está listo. Si el botón "Transcribir con IA" no encuentra el
+servidor corriendo, te lo dice en pantalla en vez de fallar en silencio.
+
+**Sobre el hardware:** por defecto usa el modelo `base` (buen balance
+velocidad/precisión en CPU). Si tu máquina es lenta o el audio es largo, usá
+`tiny`; con máquina más potente o GPU podés subir a `small` o `medium`:
 
 ```bash
 APUNTADOR_WHISPER_MODEL=tiny python3 transcribe_server.py
 ```
 
-Otras variables de entorno opcionales:
+Otras variables opcionales: `APUNTADOR_WHISPER_LANG` (idioma del audio,
+default `es`), `APUNTADOR_PORT` (default `8765`).
 
-- `APUNTADOR_WHISPER_LANG` (por defecto `es`) — idioma del audio.
-- `APUNTADOR_PORT` (por defecto `8765`) — puerto del servidor local.
-
-**Sobre la conexión a internet:** la primera vez que corres el script con un
-modelo nuevo, descarga los pesos de ese modelo desde Hugging Face (necesitas
-internet esa única vez). Después queda cacheado en disco y funciona sin
-conexión — igual que el resto del prompter.
-
-**Revisa el texto antes de aplicarlo.** La transcripción llena el cuadro de
-texto del guion pero no lo aplica sola: la separación en líneas depende de
-las pausas que detecta Whisper en el audio, no necesariamente coincide con
-"una línea = una frase" como preferís organizar el guion. Ajusta el texto y
-después presiona "Aplicar guion" como de costumbre.
+**Revisá el texto antes de aplicarlo** — la separación en líneas depende de
+las pausas que detecta Whisper, no siempre coincide con cómo preferís
+organizar el guion.
 
 ## Sincronización automática (opcional)
 
-En la vista "Sincronizar" hay un botón "⚡ Auto-sincronizar (IA local)", junto
-a los controles de marcado manual. Es **opcional** — el marcado manual con
-"MARCAR (Enter)" sigue funcionando exactamente igual que antes y es la forma
-de corregir cualquier línea puntual después de auto-sincronizar.
+Toma el guion que ya escribiste (tal cual, sin cambiarlo) y el audio, y
+calcula en qué segundo empieza cada línea usando *forced alignment*
+([MMS_FA](https://pytorch.org/audio/stable/pipelines.html#torchaudio.pipelines.MMS_FA),
+de Meta). Es opcional: el marcado manual con "MARCAR" sigue funcionando igual
+y sirve para corregir líneas puntuales después.
 
-A diferencia de la transcripción (que convierte audio en texto), esto hace lo
-contrario: toma el guion que ya escribiste (tal cual, sin cambiarlo) y el
-audio, y calcula automáticamente en qué segundo empieza cada línea usando
-*forced alignment* ([MMS_FA](https://pytorch.org/audio/stable/pipelines.html#torchaudio.pipelines.MMS_FA),
-un modelo de Meta vía torchaudio). No manda nada a internet en el momento de
-usarlo.
+**Instalación y arranque:** los mismos `install_ai.sh`/`install_ai.bat` y
+`start_ai.sh`/`start_ai.bat` de arriba levantan también este servidor
+(`sync_server.py` en `http://127.0.0.1:8766`) — no hace falta nada aparte.
 
-Para que funcione, `sync_server.py` (incluido en esta carpeta) tiene que
-estar corriendo *antes* de darle al botón:
-
-```bash
-# una sola vez
-pip install torch torchaudio av uroman
-
-# cada vez que quieras auto-sincronizar
-python3 sync_server.py
-```
-
-Deja esa terminal abierta — el script levanta un servidor en
-`http://127.0.0.1:8766` y `apuntador.html` le manda el audio y el guion
-directo desde el navegador. Si el botón no encuentra el servidor corriendo,
-te lo dice en pantalla en vez de fallar en silencio.
-
-**Sobre el hardware — usa GPU si la máquina tiene una NVIDIA.** El script
-detecta automáticamente si hay una GPU NVIDIA disponible (`torch.cuda.is_available()`)
-y la usa; si no hay, cae a CPU sin que tengas que cambiar nada. El terminal
-imprime qué dispositivo quedó activo ("cuda" o "cpu") al arrancar, y
-`GET http://127.0.0.1:8766/health` también lo reporta.
+**Sobre el hardware:** usa GPU NVIDIA automáticamente si está disponible
+(`torch.cuda.is_available()`); si no, cae a CPU sin que tengas que cambiar
+nada. El terminal (o `GET http://127.0.0.1:8766/health`) te dice qué
+dispositivo quedó activo.
 
 Para que la GPU se use de verdad (por ejemplo una GeForce GTX 1650 Super u
-otra NVIDIA con soporte CUDA) hace falta instalar la build de PyTorch con
-CUDA, en vez del comando genérico de arriba:
+otra NVIDIA con CUDA), instalá la build de PyTorch con CUDA en vez de la que
+trae `install_ai`:
 
 ```bash
 # Windows, GPU NVIDIA — instala PyTorch con soporte CUDA
@@ -155,27 +165,24 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
 pip install av uroman
 ```
 
-Esto requiere tener instalado el driver de NVIDIA (el normal de Windows para
-jugar/usar la GPU ya alcanza; no hace falta instalar el CUDA Toolkit aparte).
-Si el comando de arriba falla o tu driver es más nuevo/viejo, la página
-oficial [pytorch.org/get-started](https://pytorch.org/get-started/locally/)
-te da el comando exacto según tu versión de CUDA — elegí "Windows" + "Pip" +
-"CUDA". Si no instalás la build con CUDA, el script sigue funcionando igual,
-solo que más lento (CPU).
+Requiere el driver normal de NVIDIA (el mismo que usás para jugar; no hace
+falta el CUDA Toolkit aparte). Si el comando falla o tu driver es
+más nuevo/viejo, [pytorch.org/get-started](https://pytorch.org/get-started/locally/)
+te da el comando exacto (elegí "Windows" + "Pip" + "CUDA"). Sin la build CUDA,
+igual funciona, solo que más lento (CPU).
 
-**Sobre líneas que no se pudieron alinear.** Si alguna línea del guion no
-tiene palabras (por ejemplo una acotación entre paréntesis sin diálogo), esa
-línea puede quedar sin marca automática. La app te avisa cuántas líneas
-quedaron pendientes; podés completarlas a mano con "MARCAR" como siempre,
-siguiendo desde esa línea.
+**Sobre líneas que no se pudieron alinear:** una acotación entre paréntesis
+sin diálogo, por ejemplo, puede quedar sin marca automática. La app avisa
+cuántas líneas quedaron pendientes; completalas a mano con "MARCAR" desde ahí.
 
-**Sobre la conexión a internet:** la primera vez que corres el script,
-descarga los pesos del modelo MMS_FA (necesitas internet esa única vez).
-Después queda cacheado en disco y funciona sin conexión.
+**Revisá las marcas antes de pasar a Monitor** — repasá la columna de tiempos
+en "Sincronizar" y corregí a mano lo que haga falta ("Deshacer" retrocede
+línea por línea).
 
-**Revisa las marcas antes de pasar a Monitor.** La auto-sincronización suele
-quedar muy cerca del golpe real, pero no es perfecta — repasa la lista de
-líneas en la vista "Sincronizar" (columna de tiempos) y, si alguna quedó mal,
-volvé a marcarla a mano: hacer clic en "Deshacer" repetidamente retrocede
-línea por línea, o simplemente corré "MARCAR" de nuevo desde la línea que
-quieras corregir en adelante.
+## Notas generales sobre las funciones de IA
+
+- Ambas requieren internet **solo la primera vez** que corren (para
+  descargar los modelos); después quedan cacheados en disco y funcionan sin
+  conexión, igual que el resto del prompter.
+- Si algo falla, `install_ai`/`start_ai` te muestran el error en pantalla en
+  vez de fallar en silencio.
