@@ -21,17 +21,42 @@ fi
 
 URL="http://localhost:$PORT/apuntador.html"
 
-echo "Iniciando Apuntador en $URL"
-echo "Deja esta terminal abierta mientras uses el prompter."
-echo "Para apagar el servidor, cerra esta ventana o presiona Ctrl+C."
+echo "=== Apuntador ==="
+echo "[1/2] Iniciando servidor local en $URL ..."
 
-(
-    sleep 1
-    if command -v xdg-open >/dev/null 2>&1; then
-        xdg-open "$URL" >/dev/null 2>&1
-    elif command -v open >/dev/null 2>&1; then
-        open "$URL" >/dev/null 2>&1
+"$PYTHON" -m http.server "$PORT" &
+PID=$!
+
+trap 'echo ""; echo "Apagando servidor..."; kill "$PID" 2>/dev/null; wait 2>/dev/null; echo "Listo, servidor apagado."; exit 0' INT TERM
+
+tries=0
+printf "  Esperando a que responda"
+while [ "$tries" -lt 30 ]; do
+    if ! kill -0 "$PID" 2>/dev/null; then
+        echo ""
+        echo "  El servidor no arranco (revisa el error de arriba)."
+        exit 1
     fi
-) &
+    if "$PYTHON" -c "import urllib.request; urllib.request.urlopen('$URL', timeout=1)" >/dev/null 2>&1; then
+        echo " -> listo."
+        break
+    fi
+    printf "."
+    sleep 0.3
+    tries=$((tries + 1))
+done
 
-exec "$PYTHON" -m http.server "$PORT"
+echo "[2/2] Abriendo el navegador..."
+if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL" >/dev/null 2>&1 &
+elif command -v open >/dev/null 2>&1; then
+    open "$URL" >/dev/null 2>&1 &
+else
+    echo "  No se pudo abrir el navegador automaticamente. Abrilo manualmente en: $URL"
+fi
+
+echo ""
+echo "Apuntador esta corriendo. Deja esta terminal abierta mientras lo uses."
+echo "Para apagar el servidor, presiona Ctrl+C."
+
+wait "$PID"

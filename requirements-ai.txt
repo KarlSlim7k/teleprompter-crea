@@ -1,0 +1,11 @@
+# Dependencias opcionales para transcribe_server.py y sync_server.py.
+# Instalar con: pip install -r requirements-ai.txt (o usar install_ai.sh / install_ai.bat)
+#
+# Esto instala la build CPU de torch/torchaudio, que funciona en cualquier
+# maquina. Si tenes GPU NVIDIA y queres usarla con sync_server.py, segui las
+# instrucciones de CUDA en el README en vez de este archivo.
+faster-whisper
+torch
+torchaudio
+av
+uroman
