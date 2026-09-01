@@ -1,13 +1,17 @@
 # Apuntador
 
-Prompter sincronizado a audio para operadores de marioneta. Un solo archivo
-HTML/CSS/JS (sin build, sin dependencias de npm/pip) más una carpeta `/fonts`
-con las tipografías embebidas localmente. Funciona sin conexión a internet.
+Prompter para operadores de marioneta, con dos modos: sincronizado a audio
+(para postproducción) o guion manual en vivo (para quien mueve la marioneta y
+habla en directo, sin audio). Front-end sin build ni dependencias de npm/pip
+(`apuntador.html` + `apuntador.css` + `apuntador.js`) más una carpeta
+`/fonts` con las tipografías embebidas localmente. Funciona sin conexión a
+internet.
 
 ## Inicio rápido
 
-1. Descarga o cloná esta carpeta completa (necesitás `apuntador.html` junto
-   con la carpeta `/fonts`, no solo el HTML suelto).
+1. Descarga o cloná esta carpeta completa (necesitás `apuntador.html`,
+   `apuntador.css` y `apuntador.js` juntos, más la carpeta `/fonts` — no solo
+   el HTML suelto).
 2. Abrí `apuntador.html` con doble clic. Se abre en tu navegador y ya podés
    usarlo.
    - Si usás **Firefox**, o si tu Chrome/Edge da errores raros al guardar el
@@ -17,31 +21,81 @@ con las tipografías embebidas localmente. Funciona sin conexión a internet.
      - Esto levanta un servidor local y te abre el navegador solo. Ver
        [por qué hace falta esto a veces](#cuándo-hace-falta-un-servidor-local).
 
-Con eso ya podés escribir tu guion, cargar el audio, sincronizar y usar el
-modo monitor — todo lo demás en este README es opcional (transcripción y
-sincronización automáticas con IA).
+Con eso ya podés escribir tu guion, elegir el modo (con audio o solo guion),
+cargar el audio si corresponde, sincronizar y usar el modo monitor — todo lo
+demás en este README es opcional (transcripción y sincronización automáticas
+con IA).
 
 ## Cómo usar el prompter
 
-La app tiene tres pestañas que se van habilitando en orden: **Editor** →
-**Sincronizar** → **Monitor**.
+En "Editor" primero elegís el modo:
+
+- **🔊 Con audio (sincronizado)** — el flujo clásico: **Editor** →
+  **Sincronizar** → **Monitor**. Pensado para postproducción con una
+  grabación ya lista.
+- **📜 Solo guion (manual, sin audio)** — sin audio ni pestaña de
+  sincronización: **Editor** → **Monitor** directo, con avance de línea
+  manual (o automático por tiempo). Pensado para quien maneja la marioneta y
+  habla en vivo y solo necesita ver qué sigue.
+
+### Formato del guion
+
+Una línea = una frase, acotación o pie de entrada. Hay un formato opcional
+para distinguir diálogo de contexto de escena, útil en los dos modos:
+
+- `[texto]` o `(texto)` → **acotación / contexto de escena** (por ejemplo
+  `[Entra Moki por la puerta]`). No se lee en voz alta: se muestra en cursiva
+  y marcada como "ACOTACIÓN" en vez del texto grande principal.
+- `NOMBRE: texto` (nombre en mayúsculas) → línea de diálogo con etiqueta de
+  quién habla, por ejemplo `MOKI: ¿Quién anda ahí?`.
+- Línea simple, sin formato → se trata como diálogo sin marcar, igual que
+  antes. Si no usás el formato, el prompter funciona exactamente como antes.
+
+### Convertir un guion existente al formato con IA
+
+Si ya tenés el guion escrito en otro formato (un documento, un guion técnico,
+lo que sea), no hace falta reescribirlo a mano. En el panel "Guion" tocá
+**🤖 Formato para IA**: se abre una ventana con instrucciones listas para
+copiar y pegar en cualquier asistente de IA (ChatGPT, Claude, etc.), seguidas
+de tu guion original. La IA te devuelve el texto ya separado en líneas, con
+acotaciones entre corchetes y personajes en mayúsculas seguidos de dos
+puntos — listo para pegar en el cuadro de "Guion" de la app.
+
+### Apariencia del texto
+
+El botón **⚙ Apariencia**, arriba a la derecha (disponible en cualquier
+pestaña), abre un panel rápido para ajustar cómo se ve el texto en pantalla:
+
+- **Tamaño de letra**: escala el texto principal del Monitor y de
+  "Sincronizar" (60%–180%).
+- **Color de texto**: color del diálogo/línea principal.
+- **Color de acotaciones**: color con el que se resaltan las acotaciones de
+  escena (`[texto]`/`(texto)`) en cursiva, tanto en el Monitor como en las
+  listas de líneas.
+
+Los cambios se aplican al instante (incluida la ventana emergente, si la
+tenés abierta) y quedan guardados en este navegador para la próxima vez.
+**Restablecer** vuelve a los valores por defecto.
 
 ### 1. Editor
 
-- Pegá el guion en el cuadro de texto (una línea = una frase/golpe de diálogo)
-  y presioná **Aplicar guion**.
-- Cargá el archivo de audio del episodio en "Audio del episodio".
-- *(Opcional)* Si no tenés el guion escrito, podés generar un borrador con
-  **Transcribir con IA (servidor local)** a partir del audio — ver
-  [Transcripción automática](#transcripción-automática-opcional). Siempre
+- Elegí el modo (con audio o solo guion) arriba de todo.
+- Pegá el guion en el cuadro de texto y presioná **Aplicar guion**.
+- *Modo con audio:* cargá el archivo de audio del episodio en "Audio del
+  episodio". *(Opcional)* si no tenés el guion escrito, podés generar un
+  borrador con **Transcribir con IA (servidor local)** a partir del audio —
+  ver [Transcripción automática](#transcripción-automática-opcional). Siempre
   revisá el texto antes de aplicarlo.
-- En "Guardar / cargar" podés **Guardar** el proyecto (guion + estado) en este
-  navegador, **Cargar** uno guardado antes, o **Exportar/Importar .json** para
-  pasarlo a otra máquina. **Nuevo** borra todo y empieza de cero.
-- Cuando el guion está aplicado y el audio cargado, presioná
-  **Iniciar sincronización →**.
+- *Modo solo guion:* no hace falta audio, esta sección queda oculta.
+- En "Guardar / cargar" podés **Guardar** el proyecto (guion + estado + modo)
+  en este navegador, **Cargar** uno guardado antes, o **Exportar/Importar
+  .json** para pasarlo a otra máquina. **Nuevo** borra todo y empieza de
+  cero.
+- Cuando el guion está listo (y el audio cargado, si aplica), presioná
+  **Iniciar sincronización →** (modo con audio) o **Iniciar guion →** (modo
+  solo guion, va directo a Monitor).
 
-### 2. Sincronizar
+### 2. Sincronizar (solo modo con audio)
 
 Acá le decís a la app en qué segundo del audio empieza cada línea:
 
@@ -54,18 +108,41 @@ Acá le decís a la app en qué segundo del audio empieza cada línea:
   [Sincronización automática](#sincronización-automática-opcional). Después
   podés seguir corrigiendo líneas puntuales a mano igual que siempre.
 
-Cuando todas las líneas quedan marcadas, se habilita **Monitor**.
+Cuando todas las líneas quedan marcadas, se habilita **Monitor**. En modo
+solo guion esta pestaña no existe: se salta directo del Editor al Monitor.
 
 ### 3. Monitor
 
-Esta es la vista para operar en vivo:
+Esta es la vista para operar en vivo. Los controles cambian según el modo:
+
+**Modo con audio:**
 
 - **▶** reproduce el audio en sincronía con el guion; el texto avanza solo
   línea por línea siguiendo las marcas de tiempo.
 - **⏮ Reiniciar** vuelve al principio, **⏪ 5s** retrocede 5 segundos.
 - **◀ línea** / **línea ▶** saltan manualmente de línea (útil para ensayar o
   corregir en vivo); **Volver a auto** retoma el avance automático.
-- **⛶ Pantalla completa** para leer cómodo durante la grabación.
+- Atajos de teclado: `Espacio` reproduce/pausa, `←`/`→` saltan de línea, `A`
+  vuelve a automático.
+
+**Modo solo guion (sin audio):**
+
+- **◀ línea** / **línea ▶** avanzan manualmente, a tu ritmo, mientras hablás
+  en vivo. **⏮ Reiniciar** vuelve al principio.
+- **▶ Avance automático** hace avanzar el guion solo cada N segundos (campo
+  numérico al lado, editable en cualquier momento incluso mientras corre);
+  útil como referencia de ritmo, aunque lo pensado es el avance manual.
+- Debajo del texto principal hay una **lista de todas las líneas**,
+  clickeable: sirve para saltar directo a cualquier línea si te perdés,
+  sin tener que avanzar de a una.
+- Atajos de teclado: `Espacio` inicia/pausa el avance automático, `←`/`→` (o
+  `Enter`) saltan de línea a mano, `R` reinicia.
+
+**En ambos modos:**
+
+- Las acotaciones de escena (`[...]`/`(...)`) se muestran en cursiva con la
+  marca "ACOTACIÓN", separadas visualmente del diálogo.
+- **⛶ Pantalla completa** para leer cómodo durante la grabación o la función.
 - **🗗 Ventana emergente** abre el monitor en una ventana aparte (por ejemplo
   para mandarla a una segunda pantalla mientras controlás todo desde la
   principal).
