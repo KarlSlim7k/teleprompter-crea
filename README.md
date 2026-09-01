@@ -143,9 +143,15 @@ Esta es la vista para operar en vivo. Los controles cambian según el modo:
 - Las acotaciones de escena (`[...]`/`(...)`) se muestran en cursiva con la
   marca "ACOTACIÓN", separadas visualmente del diálogo.
 - **⛶ Pantalla completa** para leer cómodo durante la grabación o la función.
-- **🗗 Ventana emergente** abre el monitor en una ventana aparte (por ejemplo
-  para mandarla a una segunda pantalla mientras controlás todo desde la
-  principal).
+- **Ventana emergente**: elegí en el desplegable "Todos los personajes" o el
+  nombre de un personaje puntual (detectado automáticamente a partir de las
+  líneas `NOMBRE:` del guion) y presioná **Abrir ventana emergente**. Podés
+  abrir varias a la vez, una por personaje — cada una muestra solo el
+  diálogo de ese personaje en grande; cuando no es su turno, se queda en
+  espera mostrando igual su última línea y la próxima que le toca, para que
+  quien maneja esa marioneta sepa qué pasó y qué viene sin ver el diálogo
+  ajeno. Ideal para repartir una ventana a cada titiritero (por ejemplo, cada
+  una en su propia pantalla).
 
 ## Cuándo hace falta un servidor local
 

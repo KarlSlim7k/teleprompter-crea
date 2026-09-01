@@ -11,8 +11,7 @@
   let currentView = 'editor';
   let karaokeLineIdx = -2;
   let karaokeWordEntries = [];
-  let popoutWin = null;
-  let popoutRefs = null;
+  let popouts = []; // { win, refs, filter, name } — filter: '' = todos, o el nombre de un personaje
   let autoAdvanceTimer = null;
   let autoAdvancePlaying = false;
   let autoAdvanceSeconds = 4;
@@ -102,6 +101,7 @@
   const autoAdvanceToggle = document.getElementById('autoAdvanceToggle');
   const autoAdvanceSecondsInput = document.getElementById('autoAdvanceSeconds');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const popoutSpeakerSelect = document.getElementById('popoutSpeakerSelect');
   const popoutBtn = document.getElementById('popoutBtn');
 
   // ---------- helpers ----------
@@ -159,6 +159,26 @@
       el.appendChild(label);
     }
     el.appendChild(document.createTextNode(p.text));
+  }
+  function scriptSpeakers(){
+    const seen = [];
+    script.forEach(raw=>{
+      const p = parseScriptLine(raw);
+      if(p.speaker && seen.indexOf(p.speaker)===-1) seen.push(p.speaker);
+    });
+    return seen;
+  }
+  function ownLineIndices(speaker){
+    const arr = [];
+    script.forEach((raw,i)=>{ if(parseScriptLine(raw).speaker===speaker) arr.push(i); });
+    return arr;
+  }
+  function refreshPopoutSpeakerOptions(){
+    const speakers = scriptSpeakers();
+    const current = popoutSpeakerSelect.value;
+    popoutSpeakerSelect.innerHTML = '<option value="">🗗 Todos los personajes</option>'
+      + speakers.map(s=> '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>').join('');
+    popoutSpeakerSelect.value = speakers.indexOf(current)!==-1 ? current : '';
   }
 
   // ---------- view switching ----------
@@ -326,6 +346,7 @@
     syncIndex = 0;
     manualIndex = -1;
     scriptCount.textContent = script.length + (script.length===1?' línea':' líneas');
+    refreshPopoutSpeakerOptions();
     refreshTabAvailability();
   });
 
@@ -653,14 +674,18 @@
     if(autoAdvancePlaying) restartAutoAdvanceTimer();
   });
 
-  // ---------- monitor: ventana emergente ----------
-  function buildPopoutDocument(win){
-    win.document.title = 'Apuntador — Monitor';
+  // ---------- monitor: ventanas emergentes (una por personaje, opcional) ----------
+  // Cada ventana puede mostrar el guion completo (filter==='') o solo las
+  // líneas de un personaje (filter==='NOMBRE'): útil para repartir una
+  // ventana a cada titiritero cuando hay dos voces en escena.
+  function buildPopoutDocument(win, filter){
+    win.document.title = 'Apuntador — ' + (filter ? filter : 'Monitor');
     const style = win.document.createElement('style');
     style.textContent = `
       :root{ --mon-font-scale:1; --mon-text-color:#EDEFF3; --mon-direction-color:#8A93A3; }
       html,body{ margin:0; height:100%; background:#05070A; color:#EDEFF3; font-family:'Space Grotesk',system-ui,sans-serif; }
-      .stage{ height:100vh; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(14px,3vh,34px); padding:20px 6vw; text-align:center; }
+      .stage{ position:relative; height:100vh; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(14px,3vh,34px); padding:20px 6vw; text-align:center; }
+      .filterBadge{ position:absolute; top:20px; left:50%; transform:translateX(-50%); font-family:'IBM Plex Mono',monospace; font-size:.8rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#9B8CFF; border:1px solid #9B8CFF; border-radius:20px; padding:5px 16px; }
       .prevLine, .nextLine{ font-size:clamp(1rem,2.6vw,1.7rem); color:#4B515C; font-weight:500; line-height:1.4; }
       .curLine{ font-size:calc(clamp(2.1rem,6vw,4.6rem) * var(--mon-font-scale)); font-weight:700; color:var(--mon-text-color); line-height:1.25; }
       .curLine.idle{ color:#4B515C; font-family:'IBM Plex Mono',monospace; font-size:1.6rem; letter-spacing:.2em; }
@@ -671,7 +696,8 @@
       .directionLabel{ display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:.72rem; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--mon-direction-color); margin:0 8px 4px 0; vertical-align:middle; }
     `;
     win.document.head.appendChild(style);
-    win.document.body.innerHTML = '<div class="stage"><div class="prevLine" id="prevLine"></div><div class="curLine" id="curLine">···</div><div class="nextLine" id="nextLine"></div></div>';
+    const badge = filter ? '<div class="filterBadge">'+escapeHtml(filter)+'</div>' : '';
+    win.document.body.innerHTML = '<div class="stage">'+badge+'<div class="prevLine" id="prevLine"></div><div class="curLine" id="curLine">···</div><div class="nextLine" id="nextLine"></div></div>';
     return {
       prevLine: win.document.getElementById('prevLine'),
       curLine: win.document.getElementById('curLine'),
@@ -680,27 +706,88 @@
   }
 
   function syncPopoutAppearance(){
-    if(!popoutWin || popoutWin.closed) return;
-    popoutWin.document.documentElement.style.setProperty('--mon-font-scale', appearance.fontScale);
-    popoutWin.document.documentElement.style.setProperty('--mon-text-color', appearance.textColor);
-    popoutWin.document.documentElement.style.setProperty('--mon-direction-color', appearance.directionColor);
+    popouts.forEach(p=>{
+      if(!p.win || p.win.closed) return;
+      p.win.document.documentElement.style.setProperty('--mon-font-scale', appearance.fontScale);
+      p.win.document.documentElement.style.setProperty('--mon-text-color', appearance.textColor);
+      p.win.document.documentElement.style.setProperty('--mon-direction-color', appearance.directionColor);
+    });
+  }
+
+  // Vista filtrada por personaje: si la línea actual es suya, la muestra en
+  // vivo (curLine); si no, deja curLine en espera y muestra en prevLine/
+  // nextLine la última y la próxima línea que le tocan, para que sepa qué
+  // pasó y qué viene sin ver el diálogo del otro personaje.
+  function computeFilteredView(idx, filter){
+    if(!filter){
+      return {
+        isLive: idx!==-1,
+        curRaw: idx>=0 ? script[idx] : null,
+        prevRaw: idx-1>=0 ? script[idx-1] : null,
+        nextRaw: idx+1<script.length ? script[idx+1] : (idx===-1 && script.length>0 ? script[0] : null)
+      };
+    }
+    const mineIdx = ownLineIndices(filter);
+    const pos = mineIdx.indexOf(idx);
+    if(pos!==-1){
+      return {
+        isLive: true,
+        curRaw: script[idx],
+        prevRaw: pos>0 ? script[mineIdx[pos-1]] : null,
+        nextRaw: pos+1<mineIdx.length ? script[mineIdx[pos+1]] : null
+      };
+    }
+    let prevOwn = -1, nextOwn = -1;
+    mineIdx.forEach(i=>{
+      if(i<=idx) prevOwn = i;
+      if(i>idx && nextOwn===-1) nextOwn = i;
+    });
+    return {
+      isLive: false,
+      curRaw: null,
+      prevRaw: prevOwn>=0 ? script[prevOwn] : null,
+      nextRaw: nextOwn>=0 ? script[nextOwn] : null
+    };
+  }
+
+  function renderPopoutEntry(entry, idx){
+    const view = computeFilteredView(idx, entry.filter);
+    entry.refs.prevLine.textContent = view.prevRaw ? lineDisplayText(view.prevRaw) : '';
+    entry.refs.nextLine.textContent = view.nextRaw ? lineDisplayText(view.nextRaw) : '';
+    if(!view.isLive || view.curRaw===null){
+      entry.refs.curLine.textContent = '· · ·';
+      entry.refs.curLine.classList.add('idle');
+      entry.refs.curLine.classList.remove('direction');
+      return;
+    }
+    entry.refs.curLine.classList.remove('idle');
+    if(!entry.filter){
+      entry.refs.curLine.innerHTML = curLineEl.innerHTML;
+      entry.refs.curLine.classList.toggle('direction', curLineEl.classList.contains('direction'));
+    } else {
+      renderStaticLineInto(entry.refs.curLine, view.curRaw);
+    }
   }
 
   popoutBtn.addEventListener('click', ()=>{
-    if(popoutWin && !popoutWin.closed){ popoutWin.focus(); return; }
-    popoutWin = window.open('', 'apuntadorMonitorPopout', 'width=1280,height=720');
-    if(!popoutWin){
+    const filter = popoutSpeakerSelect.value;
+    const winName = 'apuntadorPopout_' + (filter || 'TODOS');
+    const existing = popouts.find(p=> p.name===winName && p.win && !p.win.closed);
+    if(existing){ existing.win.focus(); return; }
+    const win = window.open('', winName, 'width=1280,height=720');
+    if(!win){
       saveStatus.textContent = 'El navegador bloqueó la ventana emergente. Permití pop-ups para este sitio.';
       return;
     }
-    popoutRefs = buildPopoutDocument(popoutWin);
+    const refs = buildPopoutDocument(win, filter);
+    popouts.push({ win, refs, filter, name: winName });
     syncPopoutAppearance();
     renderMonitor();
   });
 
   function renderMonitor(){
     if(!monitorReady()) return;
-    if(popoutWin && popoutWin.closed){ popoutWin = null; popoutRefs = null; }
+    popouts = popouts.filter(p=> p.win && !p.win.closed);
 
     const idx = mode==='noaudio'
       ? manualIndex
@@ -742,16 +829,10 @@
     }
     updateCueState();
 
-    if(popoutRefs){
-      popoutRefs.prevLine.textContent = prevLineEl.textContent;
-      popoutRefs.nextLine.textContent = nextLineEl.textContent;
-      popoutRefs.curLine.innerHTML = curLineEl.innerHTML;
-      popoutRefs.curLine.classList.toggle('idle', curLineEl.classList.contains('idle'));
-      popoutRefs.curLine.classList.toggle('direction', curLineEl.classList.contains('direction'));
-    }
+    popouts.forEach(entry=> renderPopoutEntry(entry, idx));
   }
 
-  function monitorHasAudience(){ return currentView==='monitor' || (popoutWin && !popoutWin.closed); }
+  function monitorHasAudience(){ return currentView==='monitor' || popouts.some(p=> p.win && !p.win.closed); }
   audioEl.addEventListener('timeupdate', ()=>{ if(mode==='audio' && monitorHasAudience() && !manualOverride) renderMonitor(); });
   audioEl.addEventListener('play', ()=>{ if(mode==='audio' && monitorHasAudience()) renderMonitor(); });
   audioEl.addEventListener('pause', ()=>{ if(mode==='audio' && monitorHasAudience()) renderMonitor(); });
@@ -884,6 +965,7 @@
       scriptInput.value = script.join('\n');
       scriptCount.textContent = script.length + (script.length===1?' línea':' líneas');
       projectName.value = name;
+      refreshPopoutSpeakerOptions();
       applyModeToUI();
 
       let audioRecord = null;
@@ -941,6 +1023,7 @@
         scriptInput.value = script.join('\n');
         scriptCount.textContent = script.length + (script.length===1?' línea':' líneas');
         saveStatus.textContent = mode==='audio' ? 'Importado. Vuelve a cargar el audio para continuar.' : 'Importado (modo solo guion).';
+        refreshPopoutSpeakerOptions();
         applyModeToUI();
         refreshTabAvailability();
       }catch(err){ saveStatus.textContent = 'El archivo .json no es válido.'; }
@@ -950,8 +1033,8 @@
 
   newProjectBtn.addEventListener('click', ()=>{
     if(!confirm('Esto borra el guion, la sincronización y el audio cargado. ¿Continuar?')) return;
-    if(popoutWin && !popoutWin.closed) popoutWin.close();
-    popoutWin = null; popoutRefs = null; karaokeLineIdx = -2;
+    popouts.forEach(p=>{ if(p.win && !p.win.closed) p.win.close(); });
+    popouts = []; karaokeLineIdx = -2;
     stopAutoAdvance();
     script = []; timestamps = []; syncIndex = 0; manualOverride = false; manualIndex = -1;
     mode = 'audio';
@@ -962,6 +1045,7 @@
     transcribeBtn.disabled = true; transcribeStatus.textContent = 'Requiere transcribe_server.py corriendo en esta máquina (ver README). El texto queda editable antes de aplicarlo.';
     autoSyncStatus.textContent = 'Auto-sincronizar requiere sync_server.py corriendo en esta máquina (ver README). Calcula todas las marcas de golpe; podés revisar y corregir cualquier línea a mano después.';
     projectName.value=''; saveStatus.textContent='';
+    refreshPopoutSpeakerOptions();
     applyModeToUI();
     refreshTabAvailability();
     setView('editor');
@@ -971,6 +1055,7 @@
   applyModeToUI();
   refreshTabAvailability();
   refreshSavedList();
+  refreshPopoutSpeakerOptions();
   loadAppearance();
   applyAppearance();
   updateCueState();
